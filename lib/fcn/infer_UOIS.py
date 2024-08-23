@@ -9,6 +9,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'datasets'))
 
 import numpy as np
 import cv2
+import open3d as o3d
 from tqdm import tqdm
 from detectron2.data import MetadataCatalog, DatasetCatalog
 from meanshiftformer.config import add_meanshiftformer_config
@@ -29,7 +30,7 @@ warnings.simplefilter("ignore", UserWarning)
 from test_utils import test_dataset, test_sample, test_sample_crop, test_dataset_crop, Network_RGBD, test_sample_crop_nolabel, get_result_from_network
 from utils.mask import visualize_segmentation
 dirname = os.path.dirname(__file__)
-
+import json
 
 # # RGB
 cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/tabletop_pretrained_ResNet50.yaml')
@@ -101,11 +102,53 @@ def read_file(file_path):
         data_list.append(line.strip('\n'))
     return data_list
 
+class CameraInfo():
+    """ Camera intrisics for point cloud creation. """
+
+    def __init__(self, width, height, fx, fy, cx, cy, scale):
+        self.width = width
+        self.height = height
+        self.fx = fx
+        self.fy = fy
+        self.cx = cx
+        self.cy = cy
+        self.scale = scale
+
+
+def create_point_cloud_from_depth_image(depth, camera, organized=True):
+    """ Generate point cloud using depth image only.
+
+        Input:
+            depth: [numpy.ndarray, (H,W), numpy.float32]
+                depth image
+            camera: [CameraInfo]
+                camera intrinsics
+            organized: bool
+                whether to keep the cloud in image shape (H,W,3)
+
+        Output:
+            cloud: [numpy.ndarray, (H,W,3)/(H*W,3), numpy.float32]
+                generated cloud, (H,W,3) for organized=True, (H*W,3) for organized=False
+    """
+    assert (depth.shape[0] == camera.height and depth.shape[1] == camera.width)
+    xmap = np.arange(camera.width)
+    ymap = np.arange(camera.height)
+    xmap, ymap = np.meshgrid(xmap, ymap)
+    points_z = depth / camera.scale
+    points_x = (xmap - camera.cx) * points_z / camera.fx
+    points_y = (ymap - camera.cy) * points_z / camera.fy
+    cloud = np.stack([points_x, points_y, points_z], axis=-1)
+    if not organized:
+        cloud = cloud.reshape([-1, 3])
+    return cloud
+
+
 metadata = MetadataCatalog.get("tabletop_object_train")
 
 dataset = 'PhoCAL' # 'OCID' 'PhoCAL' 'OSD'
 dataset_root = os.path.join("/media/user/data1/dataset", dataset)
 mask_save_root = os.path.join('/media/user/data1/rcao/result/uois', dataset, 'msmformer_mask')
+use_rgbd = False
 os.makedirs(mask_save_root, exist_ok=True)
 vis_save = True
 vis_save_root = os.path.join(mask_save_root, 'vis')
@@ -138,13 +181,28 @@ for image_idx, image_path in enumerate(tqdm(image_list)):
         image_dir = os.path.join(*os.path.dirname(image_path).split('/')[:-1])
         gt_mask_path = os.path.join(dataset_root, image_path.replace('rgb', 'mask'))
         gt_mask = np.array(Image.open(gt_mask_path))
+        depth_path = os.path.join(dataset_root, image_path.replace('rgb', 'depth'))
+        with open(os.path.join(dataset_root, image_dir, 'scene_camera.json')) as f:
+            intrinsics_json = json.load(f)
+        intrinsics = intrinsics_json['rgb']
         
     im = cv2.imread(os.path.join(dataset_root, image_path))
     image = (torch.from_numpy(im).permute(2, 0, 1) - torch.Tensor([123.675, 116.280, 103.530]).view(-1, 1, 1).float()) / torch.Tensor([58.395, 57.120, 57.375]).view(-1, 1, 1).float()
-    
-    # gt_mask = process_label(gt_mask)
 
-    pred_mask = get_result_from_network(cfg, image, None, None, predictor, False, 0.7, 0.4, False)
+    # gt_mask = process_label(gt_mask)
+    if use_rgbd:
+        depth = np.array(Image.open(depth_path), dtype=np.float32)
+        camera_info = CameraInfo(intrinsics['width'], intrinsics['height'], intrinsics['fx'], intrinsics['fy'], intrinsics['cx'], intrinsics['cy'], intrinsics['depth_scale'])
+        depth = create_point_cloud_from_depth_image(depth, camera_info, organized=True)
+        depth = torch.from_numpy(depth).permute(2, 0, 1) # 3xHxW
+        # scene = o3d.geometry.PointCloud()
+        # scene.points = o3d.utility.Vector3dVector(depth.reshape(-1, 3))
+        # scene.colors = o3d.utility.Vector3dVector(im.reshape(-1, 3)/255)
+        # o3d.visualization.draw_geometries([scene])
+    else:
+        depth = None
+        
+    pred_mask = get_result_from_network(cfg, image, depth, None, predictor, False, 0.7, 0.4, False)
     # eval_metrics = multilabel_metrics(pred_mask.astype(np.uint8), gt_mask)
     # print("file name: ", image_name)
     # print("first:", eval_metrics)
