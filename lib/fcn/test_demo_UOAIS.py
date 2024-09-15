@@ -36,12 +36,14 @@ dirname = os.path.dirname(__file__)
 # weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/output_1229_Res50_learn_10dec/model_0017499.pth") 
 # weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/norm_0111_RGB_mixture2_updated/model_0000319.pth")
 
-cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_ResNet50.yaml')
-weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/OSD_RGB_MSMFormer_UOAIS_SIM.pth")
+# cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_ResNet50.yaml')
+# weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/OSD_RGB_MSMFormer_UOAIS_SIM.pth")
 #
 # RGBD
-# cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_UCN.yaml')
-# weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/uoais_0531_RGBD_dataAug_depth01/model_0039367.pth")
+cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_UCN.yaml')
+# weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/uoais/OCID_RGBD_MSMFormer_UOAIS_SIM.pth")
+weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/uoais/OSD_RGBD_MSMFormer_UOAIS_SIM.pth")
+# weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/RGB_uoais_RGBD/model_final.pth")
 #
 #
 cfg_file_MSMFormer_crop = os.path.join(dirname, "../../MSMFormer/configs/crop_mixture_UCN.yaml")
@@ -103,15 +105,15 @@ if __name__ == "__main__":
     # uoais_dataset = UOAIS_Dataset("train")
     predictor, cfg = get_predictor(cfg_file=cfg_file_MSMFormer,
                                    weight_path=weight_path_MSMFormer,
-                                   input_image = "COLOR"
+                                   input_image = "RGBD_ADD"
                                    )
 
     # test_sample(cfg, uoais_dataset[0], predictor, visualization=True)
     # for i in range(10, 20):
     #     test_sample(cfg, osd_dataset[i], predictor, visualization=True, topk=False, confident_score=0.7)
     # test ocid
-    test_dataset(cfg, osd_dataset, predictor)
     # test_dataset(cfg, ocid_dataset, predictor)
+    test_dataset(cfg, osd_dataset, predictor)
 
 
 

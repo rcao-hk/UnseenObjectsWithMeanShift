@@ -337,6 +337,10 @@ def test_sample_crop(cfg, sample, predictor, predictor_crop, visualization = Fal
 
 
 def test_sample_crop_nolabel(cfg, sample, predictor, predictor_crop, visualization = False, topk=False, confident_score=0.7, low_threshold=0.4, print_result=False):
+    start_event = torch.cuda.Event(enable_timing=True)
+    mid_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
+
     image = sample['image_color'].cuda() # for future crop
     sample["image"] = image
     if len(image.shape) == 4:
@@ -353,6 +357,7 @@ def test_sample_crop_nolabel(cfg, sample, predictor, predictor_crop, visualizati
         depth = None
         sample['depth'] = None
 
+    start_event.record()
     outputs = predictor(sample)
     confident_instances = get_confident_instances(outputs, topk=topk, score=confident_score,
                                                   num_class=cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES,
@@ -373,8 +378,8 @@ def test_sample_crop_nolabel(cfg, sample, predictor, predictor_crop, visualizati
         cv2.destroyAllWindows()
 
     out_label = torch.as_tensor(binary_mask).unsqueeze(dim=0).cuda()
-    if USE_NMS:
-        out_score = torch.as_tensor(score_mask).unsqueeze(dim=0).cuda()
+    # if USE_NMS:
+    #     out_score = torch.as_tensor(score_mask).unsqueeze(dim=0).cuda()
     if depth is not None:
         if len(depth.shape) == 3:
             depth = torch.unsqueeze(depth, dim=0)
@@ -387,6 +392,10 @@ def test_sample_crop_nolabel(cfg, sample, predictor, predictor_crop, visualizati
         else:
             out_label = filter_labels_depth(out_label, depth, 0.5)
 
+    mid_event.record()
+    torch.cuda.synchronize()
+    stage1_time = start_event.elapsed_time(mid_event)
+    
     # zoom in refinement
     out_label_refined = None
     if predictor_crop is not None:
@@ -405,21 +414,32 @@ def test_sample_crop_nolabel(cfg, sample, predictor, predictor_crop, visualizati
                 labels_crop[i] = torch.from_numpy(binary_mask_crop)
             out_label_refined, labels_crop = match_label_crop(out_label, labels_crop.cuda(), out_label_crop, rois, depth_crop)
 
-    if visualization:
-        bbox = None
-        _vis_minibatch_segmentation_final(image, depth, None, out_label, out_label_refined, None,
-            selected_pixels=None, bbox=bbox)
+    end_event.record()
+    torch.cuda.synchronize()
+    stage2_time = mid_event.elapsed_time(end_event)
+    
+    # if visualization:
+    #     bbox = None
+    #     _vis_minibatch_segmentation_final(image, depth, None, out_label, out_label_refined, None,
+    #         selected_pixels=None, bbox=bbox)
 
     if out_label_refined is not None:
         out_label_refined = out_label_refined.squeeze(dim=0).cpu().numpy()
-    prediction = out_label.squeeze().detach().cpu().numpy()
+    prediction = out_label.squeeze(dim=0).detach().cpu().numpy()
     if out_label_refined is not None:
         prediction_refined = out_label_refined
     else:
         prediction_refined = prediction.copy()
         
-    return out_label, out_label_refined, out_score, bbox        
+    # out_label_refined = out_label_refined.squeeze(dim=0).cpu().numpy()
+    # out_label = out_label.squeeze(dim=0).detach().cpu().numpy()
+    # if out_label_refined is not None:
+    #     prediction_refined = out_label_refined
+    # else:
+    #     prediction_refined = prediction.copy()
         
+    # return out_label, out_label_refined, out_score, bbox
+    return prediction, prediction_refined, stage1_time, stage2_time
 
 def test_dataset(cfg,dataset, predictor, visualization=False, topk=False, confident_score=0.7, low_threshold=0.4):
     metrics_all = []

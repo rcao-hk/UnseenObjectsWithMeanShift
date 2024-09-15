@@ -35,13 +35,16 @@ dirname = os.path.dirname(__file__)
 # weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/norm_0111_RGB_mixture2_updated/model_0000319.pth")
 
 cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_ResNet50.yaml')
-weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/OSD_RGB_MSMFormer_UOAIS_SIM.pth")
+weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/uoais/OCID_MSMFormer_RGB_UOAIS_SIM.pth")
 #
 # RGBD
 # cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_UCN.yaml')
 # weight_path_MSMFormer = os.path.join(dirname, "../../MSMFormer/RGBD_0519_raw_lr3/model_0008441.pth")
 #
 #
+# cfg_file_MSMFormer = os.path.join(dirname, '../../MSMFormer/configs/UOAIS_UCN.yaml')
+# weight_path_MSMFormer = os.path.join(dirname, "../../data/checkpoints/uoais/OSD_RGBD_MSMFormer_UOAIS_SIM.pth")
+
 cfg_file_MSMFormer_crop = os.path.join(dirname, "../../MSMFormer/configs/crop_mixture_UCN.yaml")
 weight_path_MSMFormer_crop = os.path.join(dirname, "../../data/checkpoints/rgbd_pretrain/crop_RGBD_pretrained.pth")
 
@@ -96,7 +99,7 @@ if __name__ == "__main__":
     osd_dataset = OSDObject_UOAIS(image_set="test")
     # print(osd_dataset[0]['depth'])
     # pushing_dataset = PushingDataset("test")
-    uoais_dataset = UOAIS_Dataset("train")
+    # uoais_dataset = UOAIS_Dataset("train")
     predictor, cfg = get_predictor(cfg_file=cfg_file_MSMFormer,
                                    weight_path=weight_path_MSMFormer,
                                    input_image = "COLOR"

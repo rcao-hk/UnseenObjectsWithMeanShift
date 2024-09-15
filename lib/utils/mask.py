@@ -46,7 +46,7 @@ def build_matrix_of_indices(height, width):
     return np.indices((height, width), dtype=np.float32).transpose(1,2,0)
 
 
-def visualize_segmentation(im, masks, nc=None, return_rgb=False, save_dir=None):
+def visualize_segmentation(im, masks, nc=None, save_dir='result.png'):
     """ Visualize segmentations nicely. Based on code from:
         https://github.com/roytseng-tw/Detectron.pytorch/blob/master/lib/utils/vis.py
 
@@ -59,13 +59,6 @@ def visualize_segmentation(im, masks, nc=None, return_rgb=False, save_dir=None):
     masks = masks.astype(int)
     im = im.copy()
 
-    if not return_rgb:
-        fig = plt.figure()
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.axis('off')
-        fig.add_axes(ax)
-        ax.imshow(im)
-
     # Generate color mask
     if nc is None:
         NUM_COLORS = masks.max() + 1
@@ -74,13 +67,6 @@ def visualize_segmentation(im, masks, nc=None, return_rgb=False, save_dir=None):
 
     cm = plt.get_cmap('gist_rainbow')
     colors = [cm(1. * i/NUM_COLORS) for i in range(NUM_COLORS)]
-
-    if not return_rgb:
-        # matplotlib stuff
-        fig = plt.figure()
-        ax = plt.Axes(fig, [0., 0., 1., 1.])
-        ax.axis('off')
-        fig.add_axes(ax)
 
     # Mask
     imgMask = np.zeros(im.shape)
@@ -128,23 +114,12 @@ def visualize_segmentation(im, masks, nc=None, return_rgb=False, save_dir=None):
 
         # Plot the nice outline
         for c in contour:
-            if save_dir is None and not return_rgb:
-                polygon = Polygon(c.reshape((-1, 2)), fill=False, facecolor=color_mask, edgecolor='w', linewidth=1.2, alpha=0.5)
-                ax.add_patch(polygon)
-            else:
-                cv2.drawContours(im, contour, -1, (255,255,255), 2)
+            cv2.drawContours(im, contour, -1, (255,255,255), 2)
 
-
-    if save_dir is None and not return_rgb:
-        ax.imshow(im)
-        return fig
-    elif return_rgb:
-        return im
-    elif save_dir is not None:
-        # Save the image
-        PIL_image = Image.fromarray(im)
-        PIL_image.save(save_dir)
-        return PIL_image
+    # Save the image
+    PIL_image = Image.fromarray(im)
+    PIL_image.save(save_dir)
+    return PIL_image
     
 
 ### These two functions were adatped from the DAVIS public dataset ###

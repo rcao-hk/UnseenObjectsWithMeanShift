@@ -285,13 +285,13 @@ def setup(args):
     # cfg.merge_from_file(args.config_file)
     # cfg.merge_from_list(args.opts)
     # some configs for demo training
-    cfg.OUTPUT_DIR = "./RGB_uoais_0518_RGBD"
+    cfg.OUTPUT_DIR = "./RGB_uoais_RGBD"
     # RGBD UCN
     # cfg.MODEL.WEIGHTS = "../data/checkpoints/output_1008_normal_BGR_model_0069999.pth"
     # COLOR, only RGB, UCN
     #cfg.MODEL.WEIGHTS = "../data/checkpoints/RGB_norm_model_0069999.pth"
     #cfg.MODEL.WEIGHTS = "./output_1229_Res50_learn_10dec/model_0017499.pth"
-    cfg.SOLVER.MAX_ITER = 3000
+    cfg.SOLVER.MAX_ITER = 3000*6
     cfg.SOLVER.CHECKPOINT_PERIOD = 1000
     cfg.freeze()
     default_setup(cfg, args)
